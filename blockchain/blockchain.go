@@ -26,15 +26,15 @@ type BlockChain struct {
 	difficulty uint8
 }
 
-func NewTransAction(sender, recipient string, amount float64) *Transaction {
+func newTransAction(sender, recipient string, amount float64) *Transaction {
 	return &Transaction{Sender: sender, Recipient: recipient, Amount: amount}
 }
 
-func NewBlock(trans []Transaction, proof uint64, previousHash string) *Block {
+func newBlock(trans []Transaction, proof uint64, previousHash string) *Block {
 	return &Block{time.Now().UTC(), trans, proof, previousHash}
 }
 
-func NewBlockChain(difficulty uint8) *BlockChain {
+func newBlockChain(difficulty uint8) *BlockChain {
 	return &BlockChain{Chain: []Block{Block{Proof:100, PreviousHash: "1"}}, difficulty:difficulty}
 }
 

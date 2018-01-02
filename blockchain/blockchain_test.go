@@ -3,7 +3,7 @@ package blockchain
 import "testing"
 
 func TestNewBlockChain(t *testing.T) {
-	bc := NewBlockChain(16)
+	bc := newBlockChain(16)
 	if bc.Chain[0].Proof != 100 {
 		t.Errorf("Proof of genesis block is unequal to 100: %d", bc.Chain[0].Proof != 100)
 	}
@@ -14,7 +14,7 @@ func TestNewBlockChain(t *testing.T) {
 }
 
 func TestBlockChain_ProofOfWork(t *testing.T) {
-	bc := NewBlockChain(23)
+	bc := newBlockChain(23)
 	proof := bc.ProofOfWork()
 
 	if proof != 1134054 {
@@ -23,7 +23,7 @@ func TestBlockChain_ProofOfWork(t *testing.T) {
 }
 
 func TestValidateProof(t *testing.T) {
-	bc := NewBlockChain(16)
+	bc := newBlockChain(16)
 	if !bc.validateProof(8387) {
 		t.Errorf("First Proof based on genesis block not valid")
 	}
