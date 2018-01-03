@@ -6,9 +6,11 @@ import (
 	"crypto/sha256"
 	"encoding/binary"
 	"log"
+	"github.com/satori/go.uuid"
 )
 
 type Transaction struct {
+	Id uuid.UUID
 	Sender    string
 	Recipient string
 	Amount    float64
@@ -38,8 +40,10 @@ func newBlockChain(difficulty uint8) *BlockChain {
 	return &BlockChain{Chain: []Block{Block{Proof:100, PreviousHash: "1"}}, difficulty:difficulty}
 }
 
-func (b *Block) addTransaction(t *Transaction) {
+func (b *Block) addTransaction(t *Transaction) *Transaction {
+	t.Id = uuid.NewV1()
 	b.Transactions = append(b.Transactions, *t)
+	return t
 }
 
 func (b *Block) Hash() (p []byte) {
@@ -53,8 +57,8 @@ func (bc *BlockChain) AddBlock(b Block) {
 	bc.Chain = append(bc.Chain, b)
 }
 
-func (bc *BlockChain) AddTransaction(t *Transaction) {
-	bc.Chain[len(bc.Chain)-1].addTransaction(t)
+func (bc *BlockChain) AddTransaction(t *Transaction) *Transaction {
+	return bc.Chain[len(bc.Chain)-1].addTransaction(t)
 }
 
 func (bc *BlockChain) validateProof(proof uint64) bool {

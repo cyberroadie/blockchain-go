@@ -9,12 +9,12 @@ import (
 )
 
 type Node struct {
-	nodeId uuid.UUID
-	nodeUrl url.URL
+	NodeId  uuid.UUID `json:"id,string"`
+	NodeUrl url.URL   `json:"url,string"`
 }
 
 type NodeRegistry struct {
-	nodes map[uuid.UUID]Node
+	Nodes map[uuid.UUID]Node
 }
 
 func newNode() *Node {
@@ -22,19 +22,19 @@ func newNode() *Node {
 	url := url.URL{Scheme: "http", Host: ip}
 	nodeId := uuid.NewV1()
 
-	return &Node{nodeId:nodeId, nodeUrl:url}
+	return &Node{NodeId:nodeId, NodeUrl:url}
 }
 
 func NewNodeRegistry() *NodeRegistry {
-	return &NodeRegistry{}
+	return &NodeRegistry{make(map[uuid.UUID]Node)}
 }
 
 func (nr *NodeRegistry) RegisterNode(node Node)  {
-	_, ok := nr.nodes[node.nodeId]
+	_, ok := nr.Nodes[node.NodeId]
 	if !ok {
-		log.Printf("Registering new node with ID %s", node.nodeId.String())
+		log.Printf("Registering new node with ID %s", node.NodeId.String())
 	}
-	nr.nodes[node.nodeId] = node
+	nr.Nodes[node.NodeId] = node
 }
 
 func getOutboundIP() (string) {

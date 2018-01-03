@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"encoding/json"
 	"encoding/hex"
-	"fmt"
 )
 
 type server struct {
@@ -31,17 +30,17 @@ func (bcs *server) StartServer() {
 
 	logger.Printf("Starting blockchain with difficulty %d\n", bcs.difficulty)
 
-	http.HandleFunc("/transaction", bcs.addTransaction)
-	http.HandleFunc("/block", bcs.mineBlock)
+	http.HandleFunc("/transaction", bcs.AddTransaction)
+	http.HandleFunc("/block", bcs.MineBlock)
 	http.HandleFunc("/chain", bcs.getBlockChain)
-	http.HandleFunc("/node/register", bcs.registerNode)
+	http.HandleFunc("/node/register", bcs.RegisterNode)
 	http.HandleFunc("/node/resolve", resolveConflict)
-	http.HandleFunc("/node/registry", bcs.getAllNodes)
+	http.HandleFunc("/node/registry", bcs.GetAllNodes)
 	http.ListenAndServe(":8080", nil)
 
 }
 
-func (bcs *server) getAllNodes(writer http.ResponseWriter, request *http.Request) {
+func (bcs *server) GetAllNodes(writer http.ResponseWriter, request *http.Request) {
 	encoder := json.NewEncoder(writer)
 	encoder.SetIndent("", "   ")
 	encoder.Encode(bcs.nodeRegistry)
@@ -51,7 +50,7 @@ func resolveConflict(writer http.ResponseWriter, request *http.Request) {
 
 }
 
-func (bcs *server) registerNode(writer http.ResponseWriter, request *http.Request) {
+func (bcs *server) RegisterNode(writer http.ResponseWriter, request *http.Request) {
 	decoder := json.NewDecoder(request.Body)
 	var n Node
 	err := decoder.Decode(&n)
@@ -68,9 +67,9 @@ func (bcs *server) getBlockChain(writer http.ResponseWriter, request *http.Reque
 	encoder.Encode(bcs.blockchain)
 }
 
-func (bcs *server) mineBlock(writer http.ResponseWriter, request *http.Request) {
+func (bcs *server) MineBlock(writer http.ResponseWriter, request *http.Request) {
 	proof := bcs.blockchain.ProofOfWork()
-	t := newTransAction("0", bcs.serverNode.nodeId.String(), 1)
+	t := newTransAction("0", bcs.serverNode.NodeId.String(), 1)
 	bcs.blockchain.AddTransaction(t)
 	trans := make([]Transaction,1)
 	trans[0] = *t
@@ -83,13 +82,17 @@ func (bcs *server) mineBlock(writer http.ResponseWriter, request *http.Request) 
 	encoder.Encode(b)
 }
 
-func (bcs *server) addTransaction(writer http.ResponseWriter, request *http.Request) {
+func (bcs *server) AddTransaction(writer http.ResponseWriter, request *http.Request) {
 	decoder := json.NewDecoder(request.Body)
 	var t Transaction
 	err := decoder.Decode(&t)
 	if err != nil {
 		http.Error(writer, "Invalid json", http.StatusBadRequest)
+		return
 	}
-	bcs.blockchain.AddTransaction(&t)
-	fmt.Fprint(writer, "Transaction added")
+
+	t = *bcs.blockchain.AddTransaction(&t)
+	encoder := json.NewEncoder(writer)
+	encoder.SetIndent("", "    ")
+	encoder.Encode(t)
 }
