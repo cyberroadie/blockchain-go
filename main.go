@@ -1,11 +1,11 @@
 package main
 
 import (
-	"blockchain/blockchain"
 	"os"
 	"fmt"
 	"flag"
 	"net/url"
+	"github.com/blockchain-go/blockchain"
 )
 
 var bc *blockchain.BlockChain

@@ -41,7 +41,7 @@ func newBlockChain(difficulty uint8) *BlockChain {
 }
 
 func (b *Block) addTransaction(t *Transaction) *Transaction {
-	t.Id = uuid.NewV1()
+	t.Id, _ = uuid.NewV1()
 	b.Transactions = append(b.Transactions, *t)
 	return t
 }

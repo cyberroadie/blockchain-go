@@ -20,7 +20,7 @@ type NodeRegistry struct {
 func newNode() *Node {
 	ip := getOutboundIP()
 	url := url.URL{Scheme: "http", Host: ip}
-	nodeId := uuid.NewV1()
+	nodeId, _ := uuid.NewV1()
 
 	return &Node{NodeId:nodeId, NodeUrl:url}
 }

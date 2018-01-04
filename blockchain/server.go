@@ -10,7 +10,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"time"
+	"reflect"
 )
 
 type server struct {
@@ -22,6 +22,8 @@ type server struct {
 	serverPort   int
 }
 
+var logger = log.New(os.Stdout, "blockchain", log.Lshortfile)
+
 func NewBlockChainServer(difficulty uint, regURL url.URL, serverPort int) *server {
 	bc := newBlockChain(uint8(difficulty))
 	nr := NewNodeRegistry()
@@ -30,10 +32,8 @@ func NewBlockChainServer(difficulty uint, regURL url.URL, serverPort int) *serve
 }
 
 func (bcs *server) StartServer() {
-	logger := log.New(os.Stdout, "blockchain", log.Lshortfile)
-	log.SetOutput(os.Stdout)
 
-	logger.Printf("Starting blockchain with difficulty %d, listening on port %d", bcs.difficulty, bcs.serverPort)
+	logger.Printf("starting blockchain with difficulty %d, listening on port %d", bcs.difficulty, bcs.serverPort)
 
 	http.HandleFunc("/transaction", bcs.AddTransaction)
 	http.HandleFunc("/block", bcs.MineBlock)
@@ -41,20 +41,32 @@ func (bcs *server) StartServer() {
 	http.HandleFunc("/node/register", bcs.RegisterNode)
 	http.HandleFunc("/node/resolve", resolveConflict)
 	http.HandleFunc("/node/registry", bcs.GetAllNodes)
+	logger.Printf("initialized web server")
 
+	proceed := make(chan bool, 1)
 	go func() {
-		time.Sleep(time.Second * 5)
+		<- proceed
 		err := bcs.registerSelf()
 		if err != nil {
 			logger.Fatal(err)
 		}
 	}()
 
-	serverAddr := fmt.Sprintf("0.0.0.0:%d", bcs.serverPort)
-	err := http.ListenAndServe(serverAddr, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
+	done := make(chan bool)
+	go func() {
+		serverAddr := fmt.Sprintf("0.0.0.0:%d", bcs.serverPort)
+		err := http.ListenAndServe(serverAddr, nil)
+		if err != nil {
+			log.Fatal(err)
+			os.Exit(1)
+		}
+		done <- true
+	}()
+
+	v := reflect.ValueOf(http.DefaultServeMux).Elem()
+	logger.Printf("started web server with the following routes: %v\n", v.FieldByName("m"))
+	proceed <- true
+	<-done
 
 }
 
