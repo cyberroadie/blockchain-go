@@ -7,28 +7,33 @@ import (
 	"net/http"
 	"encoding/json"
 	"encoding/hex"
+	"bytes"
+	"errors"
+	"fmt"
+	"time"
 )
 
 type server struct {
-	difficulty uint8
-	RegURL url.URL
+	difficulty   uint8
+	regURL       url.URL
 	nodeRegistry *NodeRegistry
-	blockchain *BlockChain
-	serverNode *Node
+	blockchain   *BlockChain
+	serverNode   *Node
+	serverPort   int
 }
 
-func NewBlockChainServer(difficulty uint, regURL url.URL) *server {
+func NewBlockChainServer(difficulty uint, regURL url.URL, serverPort int) *server {
 	bc := newBlockChain(uint8(difficulty))
 	nr := NewNodeRegistry()
 	n := newNode()
-	return &server{difficulty:uint8(difficulty), RegURL:regURL, nodeRegistry:nr, blockchain:bc, serverNode:n}
+	return &server{difficulty:uint8(difficulty), regURL:regURL, nodeRegistry:nr, blockchain:bc, serverNode:n, serverPort:serverPort}
 }
 
 func (bcs *server) StartServer() {
 	logger := log.New(os.Stdout, "blockchain", log.Lshortfile)
 	log.SetOutput(os.Stdout)
 
-	logger.Printf("Starting blockchain with difficulty %d\n", bcs.difficulty)
+	logger.Printf("Starting blockchain with difficulty %d, listening on port %d", bcs.difficulty, bcs.serverPort)
 
 	http.HandleFunc("/transaction", bcs.AddTransaction)
 	http.HandleFunc("/block", bcs.MineBlock)
@@ -36,8 +41,39 @@ func (bcs *server) StartServer() {
 	http.HandleFunc("/node/register", bcs.RegisterNode)
 	http.HandleFunc("/node/resolve", resolveConflict)
 	http.HandleFunc("/node/registry", bcs.GetAllNodes)
-	http.ListenAndServe(":8080", nil)
 
+	go func() {
+		time.Sleep(time.Second * 5)
+		err := bcs.registerSelf()
+		if err != nil {
+			logger.Fatal(err)
+		}
+	}()
+
+	serverAddr := fmt.Sprintf("0.0.0.0:%d", bcs.serverPort)
+	err := http.ListenAndServe(serverAddr, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
+func (bcs *server) registerSelf() error {
+	buf := bytes.NewBufferString("")
+	encoder := json.NewEncoder(buf)
+	encoder.Encode(bcs.serverNode)
+
+	url := fmt.Sprintf("%s/node/register", bcs.regURL.String())
+	res, err := http.Post( url, "application/json", buf)
+	if err != nil {
+		return err
+	}
+
+	if res.StatusCode != 200 {
+		return errors.New(fmt.Sprintf("error registering server %s %s", bcs.regURL.String(), res.Status))
+	}
+
+	return nil
 }
 
 func (bcs *server) GetAllNodes(writer http.ResponseWriter, request *http.Request) {

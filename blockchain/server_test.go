@@ -14,7 +14,7 @@ import (
 	"github.com/satori/go.uuid"
 )
 
-var bcs = NewBlockChainServer(2, url.URL{Scheme: "http", Host: "localhost:8080"})
+var bcs = NewBlockChainServer(2, url.URL{Scheme: "http", Host: "localhost:8080"}, 8080)
 
 func TestServer_AddTransaction_Invalid_JSON(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(bcs.AddTransaction))

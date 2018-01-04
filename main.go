@@ -16,6 +16,7 @@ func main() {
 
 	var difficulty = flag.Uint("dif", 16, "set difficulty block chain (max 256)")
 	var regDomain = flag.String("reg", "localhost:8080", "domain where to get the node registry from")
+	var serverPort = flag.Int("port", 8080, "port to listen on")
 
 	flag.Parse()
 
@@ -25,13 +26,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	u, err := url.Parse(fmt.Sprintf("http://%s", regDomain))
+	us := fmt.Sprintf("http://%s", *regDomain)
+	u, err := url.Parse(us)
 	if err != nil {
-		fmt.Errorf("invalid registry url: %s", fmt.Sprintf("http://%s", regDomain))
+		fmt.Errorf("invalid registry url: %s", us)
 		os.Exit(1)
 	}
 
-	bcs := blockchain.NewBlockChainServer(*difficulty, *u)
+	bcs := blockchain.NewBlockChainServer(*difficulty, *u, *serverPort)
 	bcs.StartServer()
 
 }
