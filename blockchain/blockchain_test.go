@@ -24,7 +24,21 @@ func TestBlockChain_ProofOfWork(t *testing.T) {
 
 func TestValidateProof(t *testing.T) {
 	bc := newBlockChain(16)
-	if !bc.validateProof(8387) {
+	if !bc.validateProof( bc.Chain[len(bc.Chain)-1].Proof, 8387) {
 		t.Errorf("First Proof based on genesis block not valid")
 	}
+}
+
+func TestBlockChain_ValidateChain(t *testing.T) {
+	bc := newBlockChain(16)
+
+	node := newNode(7070)
+	for i := 0; i < 10; i++ {
+		bc.MineBlock(node)
+	}
+
+	if !bc.ValidateChain(bc) {
+		t.Error("block chain should be valid, validating it returned false")
+	}
+
 }

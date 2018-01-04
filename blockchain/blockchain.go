@@ -7,6 +7,7 @@ import (
 	"encoding/binary"
 	"log"
 	"github.com/satori/go.uuid"
+	"encoding/hex"
 )
 
 type Transaction struct {
@@ -46,11 +47,24 @@ func (b *Block) addTransaction(t *Transaction) *Transaction {
 	return t
 }
 
-func (b *Block) Hash() (p []byte) {
+func (b *Block) Hash() string {
 	js, _ := json.Marshal(b)
 	h := sha256.New()
 	h.Write(js)
-	return h.Sum(nil)
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+func (bc *BlockChain) MineBlock(node *Node) *Block {
+	proof := bc.ProofOfWork()
+	t := newTransAction("0", node.NodeId.String(), 1)
+	bc.AddTransaction(t)
+	trans := make([]Transaction,1)
+	trans[0] = *t
+
+	b := newBlock(trans, proof, bc.LastBlock().Hash())
+	bc.AddBlock(*b)
+
+	return b
 }
 
 func (bc *BlockChain) AddBlock(b Block) {
@@ -61,10 +75,10 @@ func (bc *BlockChain) AddTransaction(t *Transaction) *Transaction {
 	return bc.Chain[len(bc.Chain)-1].addTransaction(t)
 }
 
-func (bc *BlockChain) validateProof(proof uint64) bool {
+func (bc *BlockChain) validateProof(lastProof, proof uint64) bool {
 	h := sha256.New()
 	gb := make([]byte, 8)
-	binary.LittleEndian.PutUint64(gb, bc.Chain[len(bc.Chain)-1].Proof)
+	binary.LittleEndian.PutUint64(gb, lastProof)
 	h.Write(gb)
 
 	lb := make([]byte, 8)
@@ -101,7 +115,7 @@ func (bc *BlockChain) validateProof(proof uint64) bool {
 func (bc *BlockChain) ProofOfWork() (proof uint64) {
 	proof = 0
 	for {
-		if bc.validateProof(proof) {
+		if bc.validateProof( bc.Chain[len(bc.Chain)-1].Proof, proof) {
 			return
 		}
 		proof += 1
@@ -112,3 +126,19 @@ func (bc *BlockChain) LastBlock() *Block {
 	return &bc.Chain[len(bc.Chain)-1]
 }
 
+func (bc *BlockChain) ValidateChain(chain *BlockChain) bool {
+
+	lastBlock := bc.Chain[0]
+
+	for _, block := range chain.Chain[1:] {
+		if block.PreviousHash != lastBlock.Hash() {
+			return false
+		}
+
+		if !chain.validateProof(lastBlock.Proof, block.Proof) {
+			return false
+		}
+		lastBlock = block
+	}
+	return true
+}

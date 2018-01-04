@@ -6,6 +6,7 @@ import (
 	"log"
 	"strings"
 	"net"
+	"fmt"
 )
 
 type Node struct {
@@ -17,8 +18,8 @@ type NodeRegistry struct {
 	Nodes map[uuid.UUID]Node
 }
 
-func newNode() *Node {
-	ip := getOutboundIP()
+func newNode(port int) *Node {
+	ip := fmt.Sprintf("%s:%d", getOutboundIP(), port)
 	url := url.URL{Scheme: "http", Host: ip}
 	nodeId, _ := uuid.NewV1()
 

@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"encoding/json"
-	"encoding/hex"
 	"bytes"
 	"errors"
 	"fmt"
@@ -27,7 +26,7 @@ var logger = log.New(os.Stdout, "blockchain", log.Lshortfile)
 func NewBlockChainServer(difficulty uint, regURL url.URL, serverPort int) *server {
 	bc := newBlockChain(uint8(difficulty))
 	nr := NewNodeRegistry()
-	n := newNode()
+	n := newNode(serverPort)
 	return &server{difficulty:uint8(difficulty), regURL:regURL, nodeRegistry:nr, blockchain:bc, serverNode:n, serverPort:serverPort}
 }
 
@@ -49,7 +48,15 @@ func (bcs *server) StartServer() {
 		err := bcs.registerSelf()
 		if err != nil {
 			logger.Fatal(err)
+			os.Exit(1)
 		}
+
+		err = bcs.getNeighbourNodes()
+		if err != nil {
+			log.Fatal(err)
+			os.Exit(1)
+		}
+
 	}()
 
 	done := make(chan bool)
@@ -88,6 +95,29 @@ func (bcs *server) registerSelf() error {
 	return nil
 }
 
+func (bcs *server) getNeighbourNodes() error {
+	url := fmt.Sprintf("%s/node/registry", bcs.regURL.String())
+	logger.Printf("getting neighbour list from %s", url)
+	res, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+
+	var nr NodeRegistry
+	decoder := json.NewDecoder(res.Body)
+	err = decoder.Decode(&nr)
+	if err != nil {
+		logger.Printf("unable to marshal nodes %!s", err)
+		logger.Printf("unable to marshal nodes %s", err)
+	}
+
+	for _,n := range nr.Nodes {
+		bcs.nodeRegistry.RegisterNode(n)
+	}
+
+	return nil
+}
+
 func (bcs *server) GetAllNodes(writer http.ResponseWriter, request *http.Request) {
 	encoder := json.NewEncoder(writer)
 	encoder.SetIndent("", "   ")
@@ -116,14 +146,8 @@ func (bcs *server) getBlockChain(writer http.ResponseWriter, request *http.Reque
 }
 
 func (bcs *server) MineBlock(writer http.ResponseWriter, request *http.Request) {
-	proof := bcs.blockchain.ProofOfWork()
-	t := newTransAction("0", bcs.serverNode.NodeId.String(), 1)
-	bcs.blockchain.AddTransaction(t)
-	trans := make([]Transaction,1)
-	trans[0] = *t
 
-	b := newBlock(trans, proof, hex.EncodeToString(bcs.blockchain.LastBlock().Hash()))
-	bcs.blockchain.AddBlock(*b)
+	b := bcs.blockchain.MineBlock(bcs.serverNode)
 
 	encoder := json.NewEncoder(writer)
 	encoder.SetIndent("", "    ")

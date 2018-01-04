@@ -96,7 +96,8 @@ func TestServer_RegisterNode(t *testing.T) {
 	ts := httptest.NewServer(http.HandlerFunc(bcs.RegisterNode))
 	defer ts.Close()
 
-	n := Node{uuid.NewV1(), url.URL{Scheme:"http", Host:"localhost:5000"}}
+	uuid, _ := uuid.NewV1()
+	n := Node{uuid, url.URL{Scheme:"http", Host:"localhost:5000"}}
 	buf := bytes.NewBufferString("")
 	encoder := json.NewEncoder(buf)
 	err := encoder.Encode(n)
