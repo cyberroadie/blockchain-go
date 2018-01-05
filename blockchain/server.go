@@ -40,6 +40,7 @@ func (bcs *server) StartServer() {
 	http.HandleFunc("/node/register", bcs.RegisterNode)
 	http.HandleFunc("/node/resolve", resolveConflict)
 	http.HandleFunc("/node/registry", bcs.GetAllNodes)
+	http.HandleFunc("/node/resolve", bcs.consensus)
 	logger.Printf("initialized web server")
 
 	proceed := make(chan bool, 1)
@@ -93,6 +94,69 @@ func (bcs *server) registerSelf() error {
 	}
 
 	return nil
+}
+
+func (bcs *server) consensus(writer http.ResponseWriter, request *http.Request) {
+	replaced := bcs.resolveConflicts()
+	var response struct{
+		message string
+	}
+
+	if replaced {
+		response.message = "our chain was replaced"
+	} else {
+		response.message = "out chain is authoritative}"
+	}
+
+	encoder := json.NewEncoder(writer)
+	encoder.Encode(&response)
+}
+
+func (bcs *server) getNeighbouringBlockchains() (chains []BlockChain, err error) {
+	for _, n := range bcs.nodeRegistry.Nodes {
+		res, err := http.Get(fmt.Sprintf("%s/chain", n.NodeUrl.String()))
+		if err != nil {
+			logger.Printf("error getting blockchain from *s", n.NodeUrl.String())
+		}
+
+		var bc BlockChain
+		decoder := json.NewDecoder(res.Body)
+		err = decoder.Decode(&bc)
+		if err != nil {
+			logger.Printf("error unmarshalling response from %s", n.NodeUrl.String())
+		} else {
+			chains = append(chains, bc)
+		}
+	}
+	if len(chains) == 0 {
+		return nil, errors.New("unable to retrieve blockchains from neighbours")
+	}
+	return chains, nil
+}
+
+func (bcs *server) resolveConflicts() (replaced bool) {
+	chains, err := bcs.getNeighbouringBlockchains()
+	if err != nil {
+		logger.Print(err)
+		return false
+	}
+
+	var maxLength = len(bcs.blockchain.Chain)
+	var newChain BlockChain
+
+	for _, c := range chains {
+		if len(c.Chain) > maxLength && c.ValidateChain() {
+			newChain = c
+			maxLength = len(newChain.Chain)
+			replaced = true
+		}
+	}
+
+	if replaced {
+		bcs.blockchain = &newChain
+	}
+
+	return
 }
 
 func (bcs *server) getNeighbourNodes() error {

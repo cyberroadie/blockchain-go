@@ -126,16 +126,16 @@ func (bc *BlockChain) LastBlock() *Block {
 	return &bc.Chain[len(bc.Chain)-1]
 }
 
-func (bc *BlockChain) ValidateChain(chain *BlockChain) bool {
+func (bc *BlockChain) ValidateChain() bool {
 
 	lastBlock := bc.Chain[0]
 
-	for _, block := range chain.Chain[1:] {
+	for _, block := range bc.Chain[1:] {
 		if block.PreviousHash != lastBlock.Hash() {
 			return false
 		}
 
-		if !chain.validateProof(lastBlock.Proof, block.Proof) {
+		if !bc.validateProof(lastBlock.Proof, block.Proof) {
 			return false
 		}
 		lastBlock = block

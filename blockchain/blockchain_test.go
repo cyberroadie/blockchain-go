@@ -37,7 +37,7 @@ func TestBlockChain_ValidateChain(t *testing.T) {
 		bc.MineBlock(node)
 	}
 
-	if !bc.ValidateChain(bc) {
+	if !bc.ValidateChain() {
 		t.Error("block chain should be valid, validating it returned false")
 	}
 
